@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Sofa, ChefHat, Bed, Bath, TreePine, Pencil, Trash, Check, X, ChevronDown } from 'lucide-react';
-import type { User, Task, Category } from '../App';
-import TaskCard from './TaskCard';
+import type { Category, Task, UserProfile } from '../domain/models';
+import TaskCard from '../ui/TaskCard';
 
 interface CategoriesScreenProps {
   categories: Category[];
   tasks: Task[];
-  householdUsers: User[];
-  currentUser: User;
+  householdUsers: UserProfile[];
+  currentUser: UserProfile;
   isTaskCompleted: (task: Task, userId: string) => boolean;
   onToggleTask: (taskId: string, userId: string) => void;
   onAddCategory: (category: Omit<Category, 'id'>) => void;

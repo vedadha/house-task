@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle, Users } from 'lucide-react';
-import type { RecentUser } from '../App';
+import type { RecentUser } from '../domain/models';
 
 interface LoginProps {
   onLogin: (email: string, password: string) => void;

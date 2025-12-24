@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { motion } from 'motion/react';
 import { Settings, LogOut, Users, ChevronRight, CalendarDays, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
-import type { User, Task, CompletionEvent } from '../App';
+import type { CompletionEvent, Task, UserProfile } from '../domain/models';
+import { getDayKey, isTaskCompletedInPeriod, isTaskCompletedToday } from '../domain/logic';
+import { getTaskPoints } from '../domain/points';
 
 interface ProfileScreenProps {
-  currentUser: User;
-  householdUsers: User[];
+  currentUser: UserProfile;
+  householdUsers: UserProfile[];
   tasks: Task[];
   completionEvents: CompletionEvent[];
   onResetCompletions: () => void;
@@ -28,20 +29,7 @@ export default function ProfileScreen({
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
-  const [selectedDayKey, setSelectedDayKey] = useState(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = `${today.getMonth() + 1}`.padStart(2, '0');
-    const day = `${today.getDate()}`.padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  });
-
-  const getDayKey = (date: Date) => {
-    const year = date.getFullYear();
-    const month = `${date.getMonth() + 1}`.padStart(2, '0');
-    const day = `${date.getDate()}`.padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  const [selectedDayKey, setSelectedDayKey] = useState(() => getDayKey(new Date()));
 
   const monthStart = new Date(activeMonth.getFullYear(), activeMonth.getMonth(), 1);
   const monthEnd = new Date(activeMonth.getFullYear(), activeMonth.getMonth() + 1, 0);
@@ -72,7 +60,7 @@ export default function ProfileScreen({
     dayMap.forEach((event) => {
       if (!event.completed) return;
       const current = userStats.get(event.userId) || { count: 0, points: 0, taskIds: [] };
-      const points = ratingByTask.get(event.taskId) || 1;
+      const points = getTaskPoints(event.taskId, ratingByTask);
       userStats.set(event.userId, {
         count: current.count + 1,
         points: current.points + points,
@@ -90,48 +78,17 @@ export default function ProfileScreen({
     ? new Date(selectedDayKey).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
     : '';
 
-  const getWeekStart = () => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const day = start.getDay();
-    const diff = day === 0 ? 6 : day - 1;
-    start.setDate(start.getDate() - diff);
-    return start;
-  };
-
-  const isWeeklyTaskCompleted = (taskId: string, userId: string) => {
-    const weekStart = getWeekStart();
-    const relevant = completionEvents
-      .filter((event) => event.taskId === taskId && event.userId === userId)
-      .filter((event) => new Date(event.occurredAt) >= weekStart)
-      .sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
-
-    if (relevant.length === 0) return false;
-    return relevant[relevant.length - 1].completed;
-  };
-
   const weeklyTasks = tasks.filter((task) => task.frequency === 'weekly');
   const dailyTasks = tasks.filter((task) => task.frequency === 'daily');
   const weeklyCompleted = weeklyTasks.filter((task) =>
-    isWeeklyTaskCompleted(task.id, currentUser.id)
+    isTaskCompletedInPeriod(task.id, currentUser.id, 'weekly', completionEvents)
   ).length;
   const weeklyPercent = weeklyTasks.length > 0
     ? Math.round((weeklyCompleted / weeklyTasks.length) * 100)
     : 0;
 
-  const isDailyTaskCompleted = (taskId: string, userId: string) => {
-    const todayKey = getDayKey(new Date());
-    const relevant = completionEvents
-      .filter((event) => event.taskId === taskId && event.userId === userId)
-      .filter((event) => getDayKey(new Date(event.occurredAt)) === todayKey)
-      .sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
-
-    if (relevant.length === 0) return false;
-    return relevant[relevant.length - 1].completed;
-  };
-
   const dailyCompleted = dailyTasks.filter((task) =>
-    isDailyTaskCompleted(task.id, currentUser.id)
+    isTaskCompletedToday(task.id, currentUser.id, completionEvents)
   ).length;
 
   const totalTasks = weeklyTasks.length + dailyTasks.length;
@@ -159,7 +116,7 @@ export default function ProfileScreen({
   latestMonthStatus.forEach((event) => {
     if (!event.completed) return;
     const current = monthlyTotals.get(event.userId) || { count: 0, points: 0 };
-    const points = ratingByTask.get(event.taskId) || 1;
+    const points = getTaskPoints(event.taskId, ratingByTask);
     monthlyTotals.set(event.userId, {
       count: current.count + 1,
       points: current.points + points,
@@ -336,7 +293,7 @@ export default function ProfileScreen({
                 const taskTitles = (userStats?.taskIds || [])
                   .map((taskId) => tasksById.get(taskId))
                   .filter(Boolean)
-                  .map((task) => `${task?.title} (${task?.rating || 1}★)`);
+                  .map((task) => `${task?.title} (${task?.rating || 1} star)`);
 
                 return (
                   <div key={user.id}>
@@ -346,9 +303,9 @@ export default function ProfileScreen({
                         style={{ backgroundColor: user.color }}
                       />
                       <span>{user.name}</span>
-                      <span className="text-gray-400">·</span>
+                      <span className="text-gray-400">-</span>
                       <span>{count} tasks</span>
-                      <span className="text-gray-400">·</span>
+                      <span className="text-gray-400">-</span>
                       <span>{points} pts</span>
                     </div>
                     {taskTitles.length > 0 ? (
@@ -387,7 +344,7 @@ export default function ProfileScreen({
                   <span className="text-gray-900">{user.name}</span>
                 </div>
                 <div className="text-sm text-gray-600">
-                  {totals.count} tasks · {totals.points} pts
+                  {totals.count} tasks - {totals.points} pts
                 </div>
               </div>
             );

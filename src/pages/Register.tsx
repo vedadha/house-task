@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle, ChevronRight } from 'lucide-react';
-import type { User } from '../App';
+import type { UserProfile } from '../domain/models';
 
 interface RegisterProps {
-  onRegister: (user: User) => void;
+  onRegister: (user: UserProfile & { password: string }) => void;
   onBack: () => void;
 }
 
@@ -28,7 +28,7 @@ export default function Register({ onRegister, onBack }: RegisterProps) {
 
   const handleSubmit = () => {
     if (name && email && password) {
-      const newUser: User = {
+      const newUser: UserProfile & { password: string } = {
         id: Date.now().toString(),
         name,
         email,

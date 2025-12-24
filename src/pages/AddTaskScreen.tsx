@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, Sofa, ChefHat, Bed, Bath, TreePine, Clock, Calendar } from 'lucide-react';
-import type { Task, Category } from '../App';
+import type { Category, Task } from '../domain/models';
 
 interface AddTaskScreenProps {
   categories: Category[];

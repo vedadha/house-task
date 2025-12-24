@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { House, ListTodo, Plus, User, ShoppingCart } from 'lucide-react';
-import type { User as UserType, Task, Category, CompletionEvent, GroceryItem } from '../App';
+import type { Category, CompletionEvent, GroceryItem, Task, UserProfile } from '../domain/models';
 import HomeScreen from './HomeScreen';
 import CategoriesScreen from './CategoriesScreen';
 import AddTaskScreen from './AddTaskScreen';
@@ -8,8 +8,8 @@ import ProfileScreen from './ProfileScreen';
 import GroceriesScreen from './GroceriesScreen';
 
 interface DashboardProps {
-  currentUser: UserType;
-  householdUsers: UserType[];
+  currentUser: UserProfile;
+  householdUsers: UserProfile[];
   categories: Category[];
   tasks: Task[];
   groceries: GroceryItem[];

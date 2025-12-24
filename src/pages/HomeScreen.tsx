@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Calendar, Clock, Check, Sofa, ChefHat, Bed, Bath, TreePine } from 'lucide-react';
-import type { User, Task, Category } from '../App';
+import type { Category, Task, UserProfile } from '../domain/models';
 
 interface HomeScreenProps {
-  currentUser: User;
-  householdUsers: User[];
+  currentUser: UserProfile;
+  householdUsers: UserProfile[];
   categories: Category[];
   tasks: Task[];
   isTaskCompleted: (task: Task, userId: string) => boolean;

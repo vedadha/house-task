@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { useEffect } from 'react';
 import { Plus, Trash2, ShoppingCart, Pencil, Check, X, RotateCcw, Share2 } from 'lucide-react';
-import type { GroceryItem } from '../App';
+import type { GroceryItem } from '../domain/models';
 
 interface GroceriesScreenProps {
   items: GroceryItem[];

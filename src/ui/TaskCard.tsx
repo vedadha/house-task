@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Sofa, ChefHat, Bed, Bath, TreePine, Pencil, Trash, Check, X } from 'lucide-react';
-import type { User, Task, Category } from '../App';
+import type { Category, Task, UserProfile } from '../domain/models';
 
 interface TaskCardProps {
   task: Task;
   category?: Category;
-  currentUser: User;
-  householdUsers: User[];
+  currentUser: UserProfile;
+  householdUsers: UserProfile[];
   isTaskCompleted: (task: Task, userId: string) => boolean;
   onToggleTask: (taskId: string, userId: string) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
