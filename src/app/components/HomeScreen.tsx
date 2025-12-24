@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, Check, Sofa, ChefHat, Bed, Bath, TreePine } from 'lucide-react';
 import type { User, Task, Category } from '../App';
-import TaskCard from './TaskCard';
 
 interface HomeScreenProps {
   currentUser: User;
@@ -35,6 +34,21 @@ export default function HomeScreen({
   const progress = filteredTasks.length > 0 
     ? (completedCount / filteredTasks.length) * 100 
     : 0;
+
+  const CATEGORY_ICONS = {
+    Sofa,
+    ChefHat,
+    Bed,
+    Bath,
+    TreePine,
+  };
+
+  const grouped = categories
+    .map((category) => ({
+      category,
+      tasks: filteredTasks.filter((task) => task.categoryId === category.id),
+    }))
+    .filter((group) => group.tasks.length > 0);
 
   return (
     <div className="p-6 pb-8">
@@ -101,7 +115,7 @@ export default function HomeScreen({
 
       {/* Tasks */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between">
           <h2 className="text-gray-900">
             {view === 'daily' ? 'Today' : 'This Week'}
           </h2>
@@ -116,20 +130,66 @@ export default function HomeScreen({
             <p className="text-gray-400">Tap the + button to add one</p>
           </div>
         ) : (
-          filteredTasks.map((task) => {
-            const category = categories.find((c) => c.id === task.categoryId);
+          grouped.map(({ category, tasks: categoryTasks }) => {
+            const IconComponent = CATEGORY_ICONS[category.icon as keyof typeof CATEGORY_ICONS];
+            const categoryCompleted = categoryTasks.filter((task) =>
+              isTaskCompleted(task, currentUser.id)
+            ).length;
             return (
-              <TaskCard
-                key={task.id}
-                task={task}
-                category={category}
-                currentUser={currentUser}
-                householdUsers={householdUsers}
-                isTaskCompleted={isTaskCompleted}
-                onToggleTask={onToggleTask}
-                onUpdateTask={onUpdateTask}
-                onDeleteTask={onDeleteTask}
-              />
+              <div key={category.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+                    <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: category.color }}
+                  >
+                    {IconComponent && <IconComponent className="w-4 h-4 text-gray-700" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-gray-900">{category.name}</div>
+                    <div className="text-xs text-gray-500">
+                      {categoryCompleted}/{categoryTasks.length} done
+                    </div>
+                  </div>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {categoryTasks.map((task) => {
+                    const isCompleted = isTaskCompleted(task, currentUser.id);
+                    return (
+                        <div key={task.id} className="flex items-center gap-3 px-4 py-3.5">
+                        <button
+                          onClick={() => onToggleTask(task.id, currentUser.id)}
+                          className={`h-8 w-8 rounded-full border-2 flex items-center justify-center ${
+                            isCompleted ? 'bg-blue-500 border-blue-500' : 'border-gray-300'
+                          }`}
+                        >
+                          {isCompleted && <Check className="w-4.5 h-4.5 text-white" strokeWidth={3} />}
+                        </button>
+                        <div className="flex-1">
+                          <div className={`text-base ${isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                            {task.title}
+                          </div>
+                          <div className="flex items-center gap-1 mt-1">
+                            {householdUsers.map((user) => (
+                              <span
+                                key={user.id}
+                                title={`${user.name} ${isTaskCompleted(task, user.id) ? 'done' : 'not done'}`}
+                                className={`h-3 w-3 rounded-full border ${
+                                  isTaskCompleted(task, user.id) ? 'border-transparent' : 'border-gray-200'
+                                }`}
+                                style={{
+                                  backgroundColor: isTaskCompleted(task, user.id)
+                                    ? user.color
+                                    : 'transparent',
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })
         )}

@@ -90,6 +90,56 @@ export default function ProfileScreen({
     ? new Date(selectedDayKey).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
     : '';
 
+  const getWeekStart = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const day = start.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    start.setDate(start.getDate() - diff);
+    return start;
+  };
+
+  const isWeeklyTaskCompleted = (taskId: string, userId: string) => {
+    const weekStart = getWeekStart();
+    const relevant = completionEvents
+      .filter((event) => event.taskId === taskId && event.userId === userId)
+      .filter((event) => new Date(event.occurredAt) >= weekStart)
+      .sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
+
+    if (relevant.length === 0) return false;
+    return relevant[relevant.length - 1].completed;
+  };
+
+  const weeklyTasks = tasks.filter((task) => task.frequency === 'weekly');
+  const dailyTasks = tasks.filter((task) => task.frequency === 'daily');
+  const weeklyCompleted = weeklyTasks.filter((task) =>
+    isWeeklyTaskCompleted(task.id, currentUser.id)
+  ).length;
+  const weeklyPercent = weeklyTasks.length > 0
+    ? Math.round((weeklyCompleted / weeklyTasks.length) * 100)
+    : 0;
+
+  const isDailyTaskCompleted = (taskId: string, userId: string) => {
+    const todayKey = getDayKey(new Date());
+    const relevant = completionEvents
+      .filter((event) => event.taskId === taskId && event.userId === userId)
+      .filter((event) => getDayKey(new Date(event.occurredAt)) === todayKey)
+      .sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
+
+    if (relevant.length === 0) return false;
+    return relevant[relevant.length - 1].completed;
+  };
+
+  const dailyCompleted = dailyTasks.filter((task) =>
+    isDailyTaskCompleted(task.id, currentUser.id)
+  ).length;
+
+  const totalTasks = weeklyTasks.length + dailyTasks.length;
+  const totalCompleted = weeklyCompleted + dailyCompleted;
+  const totalPercent = totalTasks > 0
+    ? Math.round((totalCompleted / totalTasks) * 100)
+    : 0;
+
   const monthKey = (date: Date) =>
     `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}`;
   const currentMonthKey = monthKey(new Date());
@@ -137,12 +187,19 @@ export default function ProfileScreen({
           <div
             className="h-full rounded-full bg-white"
             style={{
-              width: '75%',
+              width: `${totalPercent}%`,
               backgroundColor: currentUser.color,
             }}
           />
         </div>
-        <p className="text-blue-100 mt-2">75% tasks completed this week</p>
+        <div className="text-blue-100 mt-2 text-sm">
+          <div>
+            Daily: {dailyTasks.length > 0 ? Math.round((dailyCompleted / dailyTasks.length) * 100) : 0}%
+          </div>
+          <div>
+            Weekly: {weeklyPercent}%
+          </div>
+        </div>
       </div>
 
       {/* Household Members */}

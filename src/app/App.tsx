@@ -212,8 +212,9 @@ function App() {
       { title: 'Change bedsheets', categoryId: bedroomId, completedBy: [], frequency: 'weekly', rating: 1 },
       { title: 'Clean toilet', categoryId: bathroomId, completedBy: [], frequency: 'weekly', rating: 1 },
       { title: 'Wipe mirrors', categoryId: bathroomId, completedBy: [], frequency: 'weekly', rating: 1 },
+      { title: 'Clean kitchen', categoryId: kitchenId, completedBy: [], frequency: 'weekly', rating: 1 },
       { title: 'Water plants', categoryId: outdoorId, completedBy: [], frequency: 'weekly', rating: 1 },
-      { title: 'Mow lawn', categoryId: outdoorId, completedBy: [], frequency: 'weekly', rating: 1 },
+      { title: 'Car wash', categoryId: outdoorId, completedBy: [], frequency: 'weekly', rating: 1 },
     ];
   };
 
