@@ -1,21 +1,29 @@
 import { useState } from 'react';
-import { House, ListTodo, Plus, User } from 'lucide-react';
-import type { User as UserType, Task, Category, CompletionEvent } from '../App';
+import { House, ListTodo, Plus, User, ShoppingCart } from 'lucide-react';
+import type { User as UserType, Task, Category, CompletionEvent, GroceryItem } from '../App';
 import HomeScreen from './HomeScreen';
 import CategoriesScreen from './CategoriesScreen';
 import AddTaskScreen from './AddTaskScreen';
 import ProfileScreen from './ProfileScreen';
+import GroceriesScreen from './GroceriesScreen';
 
 interface DashboardProps {
   currentUser: UserType;
   householdUsers: UserType[];
   categories: Category[];
   tasks: Task[];
+  groceries: GroceryItem[];
   completionEvents: CompletionEvent[];
   isTaskCompleted: (task: Task, userId: string) => boolean;
   onResetCompletions: () => void;
   onResetTasks: () => void;
   onRemoveMember: (userId: string) => void;
+  onAddGrocery: (item: Omit<GroceryItem, 'id' | 'createdAt'>) => void;
+  onUpdateGrocery: (id: string, updates: Partial<GroceryItem>) => void;
+  onDeleteGrocery: (id: string) => void;
+  onClearGroceries: () => void;
+  onAddAgainGroceries: (selected: GroceryItem[]) => void;
+  onPreviewAddAgainGroceries: () => Promise<GroceryItem[]>;
   onLogout: () => void;
   onToggleTask: (taskId: string, userId: string) => void;
   onAddTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
@@ -26,18 +34,25 @@ interface DashboardProps {
   onDeleteCategory: (categoryId: string) => void;
 }
 
-type Screen = 'home' | 'categories' | 'add' | 'profile';
+type Screen = 'home' | 'categories' | 'groceries' | 'add' | 'profile';
 
 export default function Dashboard({
   currentUser,
   householdUsers,
   categories,
   tasks,
+  groceries,
   completionEvents,
   isTaskCompleted,
   onResetCompletions,
   onResetTasks,
   onRemoveMember,
+  onAddGrocery,
+  onUpdateGrocery,
+  onDeleteGrocery,
+  onClearGroceries,
+  onAddAgainGroceries,
+  onPreviewAddAgainGroceries,
   onLogout,
   onToggleTask,
   onAddTask,
@@ -86,6 +101,17 @@ export default function Dashboard({
             onBack={() => setActiveScreen('home')}
           />
         )}
+        {activeScreen === 'groceries' && (
+          <GroceriesScreen
+            items={groceries}
+            onAdd={onAddGrocery}
+            onUpdate={onUpdateGrocery}
+            onDelete={onDeleteGrocery}
+            onClear={onClearGroceries}
+            onAddAgain={onAddAgainGroceries}
+            onPreviewAddAgain={onPreviewAddAgainGroceries}
+          />
+        )}
         {activeScreen === 'profile' && (
           <ProfileScreen
             currentUser={currentUser}
@@ -102,10 +128,10 @@ export default function Dashboard({
 
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 max-w-md mx-auto">
-        <div className="flex items-center justify-around px-4 py-2 safe-area-inset-bottom">
+        <div className="grid grid-cols-5 items-center px-4 py-2 safe-area-inset-bottom">
           <button
             onClick={() => setActiveScreen('home')}
-            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${
               activeScreen === 'home'
                 ? 'text-blue-600 bg-blue-50'
                 : 'text-gray-500 hover:text-gray-700'
@@ -117,7 +143,7 @@ export default function Dashboard({
 
           <button
             onClick={() => setActiveScreen('categories')}
-            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${
               activeScreen === 'categories'
                 ? 'text-blue-600 bg-blue-50'
                 : 'text-gray-500 hover:text-gray-700'
@@ -138,7 +164,7 @@ export default function Dashboard({
 
           <button
             onClick={() => setActiveScreen('profile')}
-            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${
               activeScreen === 'profile'
                 ? 'text-blue-600 bg-blue-50'
                 : 'text-gray-500 hover:text-gray-700'
@@ -148,7 +174,17 @@ export default function Dashboard({
             <span className="text-xs">Profile</span>
           </button>
 
-          <div className="w-16" /> {/* Spacer for FAB */}
+          <button
+            onClick={() => setActiveScreen('groceries')}
+            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${
+              activeScreen === 'groceries'
+                ? 'text-emerald-600 bg-emerald-50'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <ShoppingCart className="w-6 h-6" />
+            <span className="text-xs">Groceries</span>
+          </button>
         </div>
       </div>
     </div>

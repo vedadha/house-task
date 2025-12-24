@@ -34,6 +34,15 @@ interface Category {
   color: string;
 }
 
+interface GroceryItem {
+  id: string;
+  name: string;
+  quantity: number;
+  note: string;
+  completed: boolean;
+  createdAt: string;
+}
+
 interface ProfileRow {
   id: string;
   name: string;
@@ -61,6 +70,30 @@ interface TaskRow {
   created_at: string;
   household_id: string;
   rating: number | null;
+}
+
+interface GroceryRow {
+  id: string;
+  name: string;
+  quantity: number;
+  note: string | null;
+  completed: boolean;
+  created_at: string;
+  household_id: string;
+}
+
+interface GroceryArchiveRow {
+  id: string;
+  household_id: string;
+  created_at: string;
+}
+
+interface GroceryArchiveItemRow {
+  id: string;
+  archive_id: string;
+  name: string;
+  quantity: number;
+  note: string | null;
 }
 
 interface CompletionEventRow {
@@ -104,6 +137,15 @@ const toTask = (row: TaskRow): Task => ({
   frequency: row.frequency,
   createdAt: row.created_at,
   rating: row.rating ?? 1,
+});
+
+const toGrocery = (row: GroceryRow): GroceryItem => ({
+  id: row.id,
+  name: row.name,
+  quantity: row.quantity,
+  note: row.note || '',
+  completed: row.completed,
+  createdAt: row.created_at,
 });
 
 const toCompletionEvent = (row: CompletionEventRow): CompletionEvent => ({
@@ -350,6 +392,173 @@ export async function getTasks(): Promise<Task[]> {
 
   if (error) throw error;
   return (data || []).map(toTask);
+}
+
+export async function getGroceries(): Promise<GroceryItem[]> {
+  await ensureAuth();
+  const { data, error } = await supabase
+    .from('groceries')
+    .select('*')
+    .eq('household_id', HOUSEHOLD_ID)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return (data || []).map(toGrocery);
+}
+
+export async function addGrocery(item: Omit<GroceryItem, 'id' | 'createdAt'>): Promise<GroceryItem> {
+  await ensureAuth();
+  const { data, error } = await supabase
+    .from('groceries')
+    .insert({
+      household_id: HOUSEHOLD_ID,
+      name: item.name,
+      quantity: item.quantity,
+      note: item.note,
+      completed: item.completed,
+    })
+    .select('*')
+    .single();
+
+  if (error || !data) throw error || new Error('Failed to add grocery item');
+  return toGrocery(data);
+}
+
+export async function updateGrocery(id: string, updates: Partial<GroceryItem>): Promise<GroceryItem> {
+  await ensureAuth();
+  const payload: Partial<GroceryRow> = {};
+  if (updates.name !== undefined) payload.name = updates.name;
+  if (updates.quantity !== undefined) payload.quantity = updates.quantity;
+  if (updates.note !== undefined) payload.note = updates.note;
+  if (updates.completed !== undefined) payload.completed = updates.completed;
+
+  const { data, error } = await supabase
+    .from('groceries')
+    .update(payload)
+    .eq('id', id)
+    .eq('household_id', HOUSEHOLD_ID)
+    .select('*')
+    .single();
+
+  if (error || !data) throw error || new Error('Failed to update grocery item');
+  return toGrocery(data);
+}
+
+export async function deleteGrocery(id: string): Promise<void> {
+  await ensureAuth();
+  const { error } = await supabase
+    .from('groceries')
+    .delete()
+    .eq('id', id)
+    .eq('household_id', HOUSEHOLD_ID);
+
+  if (error) throw error;
+}
+
+export async function clearGroceries(): Promise<void> {
+  await ensureAuth();
+  const { error } = await supabase
+    .from('groceries')
+    .delete()
+    .eq('household_id', HOUSEHOLD_ID);
+
+  if (error) throw error;
+}
+
+export async function archiveGroceries(items: GroceryItem[]): Promise<void> {
+  await ensureAuth();
+  if (items.length === 0) return;
+
+  const { data: archive, error: archiveError } = await supabase
+    .from('groceries_archives')
+    .insert({
+      household_id: HOUSEHOLD_ID,
+    })
+    .select('*')
+    .single();
+
+  if (archiveError || !archive) throw archiveError || new Error('Failed to archive groceries');
+
+  const rows = items.map((item) => ({
+    archive_id: archive.id,
+    name: item.name,
+    quantity: item.quantity,
+    note: item.note,
+  }));
+
+  const { error: itemsError } = await supabase
+    .from('groceries_archive_items')
+    .insert(rows);
+
+  if (itemsError) throw itemsError;
+}
+
+export async function getRecentGroceriesArchiveItems(limit = 3): Promise<GroceryItem[]> {
+  await ensureAuth();
+  const { data: archives, error: archiveError } = await supabase
+    .from('groceries_archives')
+    .select('*')
+    .eq('household_id', HOUSEHOLD_ID)
+    .order('created_at', { ascending: false })
+    .limit(Math.max(1, limit));
+
+  if (archiveError || !archives || archives.length === 0) return [];
+
+  const archiveIds = archives.map((archive) => archive.id);
+  const { data: items, error: itemsError } = await supabase
+    .from('groceries_archive_items')
+    .select('*')
+    .in('archive_id', archiveIds);
+
+  if (itemsError || !items) return [];
+
+  const byName = new Map<string, GroceryItem>();
+  items.forEach((item) => {
+    const key = item.name.trim().toLowerCase();
+    if (byName.has(key)) return;
+    const archive = archives.find((entry) => entry.id === item.archive_id);
+    byName.set(key, {
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      note: item.note || '',
+      completed: false,
+      createdAt: archive?.created_at || new Date().toISOString(),
+    });
+  });
+
+  return Array.from(byName.values());
+}
+
+export async function restoreSelectedGroceries(
+  selected: GroceryItem[],
+  existingNames: string[]
+): Promise<GroceryItem[]> {
+  await ensureAuth();
+  if (selected.length === 0) return [];
+
+  const existingSet = new Set(existingNames.map((name) => name.trim().toLowerCase()));
+  const toInsert = selected.filter(
+    (item) => !existingSet.has(item.name.trim().toLowerCase())
+  );
+
+  if (toInsert.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('groceries')
+    .insert(
+      toInsert.map((item) => ({
+        household_id: HOUSEHOLD_ID,
+        name: item.name,
+        quantity: item.quantity,
+        note: item.note || '',
+        completed: false,
+      }))
+    )
+    .select('*');
+
+  if (error || !data) throw error || new Error('Failed to restore groceries');
+  return data.map(toGrocery);
 }
 
 export async function addTask(task: Omit<Task, 'id' | 'createdAt'>): Promise<Task> {

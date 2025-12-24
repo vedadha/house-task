@@ -32,6 +32,15 @@ export interface Category {
   color: string;
 }
 
+export interface GroceryItem {
+  id: string;
+  name: string;
+  quantity: number;
+  note: string;
+  completed: boolean;
+  createdAt: string;
+}
+
 export interface CompletionEvent {
   id: string;
   taskId: string;
@@ -57,6 +66,7 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [completionEvents, setCompletionEvents] = useState<CompletionEvent[]>([]);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
+  const [groceries, setGroceries] = useState<GroceryItem[]>([]);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -105,10 +115,11 @@ function App() {
 
   const loadData = async () => {
     try {
-      const [users, cats, taskList] = await Promise.all([
+      const [users, cats, taskList, groceryList] = await Promise.all([
         api.getHouseholdUsers(),
         api.getCategories(),
         api.getTasks(),
+        api.getGroceries(),
       ]);
       let events: CompletionEvent[] = [];
       try {
@@ -148,6 +159,7 @@ function App() {
       setHouseholdUsers(users);
       setCategories(resolvedCategories);
       setTasks(resolvedTasks);
+      setGroceries(groceryList);
       setCompletionEvents(events);
       if (originalTaskCount !== resolvedTasks.length) {
         console.info(
@@ -296,6 +308,87 @@ function App() {
     setCategories([]);
     setTasks([]);
     setCompletionEvents([]);
+    setGroceries([]);
+  };
+
+  const handleAddGrocery = async (item: Omit<GroceryItem, 'id' | 'createdAt'>) => {
+    try {
+      const created = await api.addGrocery(item);
+      setGroceries((prev) => [...prev, created]);
+    } catch (error) {
+      console.error('Add grocery error:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to add grocery item.';
+      alert(message);
+    }
+  };
+
+  const handleUpdateGrocery = async (id: string, updates: Partial<GroceryItem>) => {
+    try {
+      const updated = await api.updateGrocery(id, updates);
+      setGroceries((prev) => prev.map((item) => (item.id === id ? updated : item)));
+    } catch (error) {
+      console.error('Update grocery error:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to update grocery item.';
+      alert(message);
+    }
+  };
+
+  const handleDeleteGrocery = async (id: string) => {
+    try {
+      await api.deleteGrocery(id);
+      setGroceries((prev) => prev.filter((item) => item.id !== id));
+    } catch (error) {
+      console.error('Delete grocery error:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to delete grocery item.';
+      alert(message);
+    }
+  };
+
+  const handleClearGroceries = async () => {
+    try {
+      if (groceries.length > 0) {
+        await api.archiveGroceries(groceries);
+      }
+      await api.clearGroceries();
+      setGroceries([]);
+      alert('Grocery list cleared.');
+    } catch (error) {
+      console.error('Clear groceries error:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to clear grocery list.';
+      alert(message);
+    }
+  };
+
+  const handleAddAgain = async (selected: GroceryItem[]) => {
+    try {
+      const restored = await api.restoreSelectedGroceries(
+        selected,
+        groceries.map((item) => item.name)
+      );
+      if (restored.length === 0) {
+        alert('No previous list found.');
+        return;
+      }
+      setGroceries((prev) => [...prev, ...restored]);
+    } catch (error) {
+      console.error('Restore groceries error:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to restore groceries.';
+      alert(message);
+    }
+  };
+
+  const handlePreviewAddAgain = async () => {
+    try {
+      return await api.getRecentGroceriesArchiveItems(3);
+    } catch (error) {
+      console.error('Preview groceries error:', error);
+      return [];
+    }
   };
 
   const handleResetCompletions = async () => {
@@ -495,11 +588,18 @@ function App() {
       householdUsers={householdUsers}
       categories={categories}
       tasks={tasks}
+      groceries={groceries}
       completionEvents={completionEvents}
       isTaskCompleted={isTaskCompleted}
       onResetCompletions={handleResetCompletions}
       onResetTasks={handleResetTasks}
       onRemoveMember={handleRemoveMember}
+      onAddGrocery={handleAddGrocery}
+      onUpdateGrocery={handleUpdateGrocery}
+      onDeleteGrocery={handleDeleteGrocery}
+      onClearGroceries={handleClearGroceries}
+      onAddAgainGroceries={handleAddAgain}
+      onPreviewAddAgainGroceries={handlePreviewAddAgain}
       onLogout={handleLogout}
       onToggleTask={toggleTaskCompletion}
       onAddTask={addTask}
