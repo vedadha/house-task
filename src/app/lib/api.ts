@@ -14,6 +14,7 @@ interface User {
   email: string;
   avatar: string;
   color: string;
+  role?: 'admin' | 'member';
 }
 
 interface Task {
@@ -40,6 +41,7 @@ interface ProfileRow {
   avatar: string;
   color: string;
   household_id: string;
+  role: 'admin' | 'member';
 }
 
 interface CategoryRow {
@@ -84,6 +86,7 @@ const toUser = (row: ProfileRow): User => ({
   email: row.email,
   avatar: row.avatar,
   color: row.color,
+  role: row.role,
 });
 
 const toCategory = (row: CategoryRow): Category => ({
@@ -133,8 +136,9 @@ const ensureProfileFromSession = async (sessionUser: { id: string; email?: strin
   const avatar = sessionUser.user_metadata?.avatar || '';
   const color = sessionUser.user_metadata?.color || '#4A90E2';
   const email = sessionUser.email || '';
+  const role = email.toLowerCase() === 'vedad.hadzihasanovic@gmail.com' ? 'admin' : 'member';
 
-  await ensureProfile(sessionUser.id, { email, name, avatar, color });
+  await ensureProfile(sessionUser.id, { email, name, avatar, color, role });
 };
 
 // Auth functions
@@ -181,11 +185,12 @@ export async function register(
   avatar: string,
   color: string
 ) {
+  const role = email.toLowerCase() === 'vedad.hadzihasanovic@gmail.com' ? 'admin' : 'member';
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { name, avatar, color, household_id: HOUSEHOLD_ID },
+      data: { name, avatar, color, household_id: HOUSEHOLD_ID, role },
     },
   });
 
@@ -195,7 +200,7 @@ export async function register(
     throw new Error('Check your email to confirm your account, then sign in.');
   }
 
-  await ensureProfile(data.session.user.id, { email, name, avatar, color });
+  await ensureProfile(data.session.user.id, { email, name, avatar, color, role });
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
@@ -450,4 +455,57 @@ export async function getCompletionEvents(days: number): Promise<CompletionEvent
 
   if (error) throw error;
   return (data || []).map(toCompletionEvent);
+}
+
+export async function resetCompletions(): Promise<void> {
+  await ensureAuth();
+  const { error: deleteError } = await supabase
+    .from('completion_events')
+    .delete()
+    .eq('household_id', HOUSEHOLD_ID);
+
+  if (deleteError) throw deleteError;
+
+  const { error: updateError } = await supabase
+    .from('tasks')
+    .update({ completed_by: [] })
+    .eq('household_id', HOUSEHOLD_ID);
+
+  if (updateError) throw updateError;
+}
+
+export async function resetTasksToDefaults(): Promise<void> {
+  await ensureAuth();
+  const { error: eventsError } = await supabase
+    .from('completion_events')
+    .delete()
+    .eq('household_id', HOUSEHOLD_ID);
+
+  if (eventsError) throw eventsError;
+
+  const { error: tasksError } = await supabase
+    .from('tasks')
+    .delete()
+    .eq('household_id', HOUSEHOLD_ID);
+
+  if (tasksError) throw tasksError;
+}
+
+export async function removeHouseholdMember(userId: string): Promise<void> {
+  await ensureAuth();
+  const { error: eventsError } = await supabase
+    .from('completion_events')
+    .delete()
+    .eq('household_id', HOUSEHOLD_ID)
+    .eq('user_id', userId);
+
+  if (eventsError) throw eventsError;
+
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .delete()
+    .eq('id', userId)
+    .eq('household_id', HOUSEHOLD_ID);
+
+  if (profileError) throw profileError;
 }

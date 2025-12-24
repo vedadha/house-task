@@ -8,6 +8,9 @@ interface ProfileScreenProps {
   householdUsers: User[];
   tasks: Task[];
   completionEvents: CompletionEvent[];
+  onResetCompletions: () => void;
+  onResetTasks: () => void;
+  onRemoveMember: (userId: string) => void;
   onLogout: () => void;
 }
 
@@ -16,6 +19,9 @@ export default function ProfileScreen({
   householdUsers,
   tasks,
   completionEvents,
+  onResetCompletions,
+  onResetTasks,
+  onRemoveMember,
   onLogout,
 }: ProfileScreenProps) {
   const [activeMonth, setActiveMonth] = useState(() => {
@@ -48,12 +54,23 @@ export default function ProfileScreen({
 
   const ratingByTask = new Map(tasks.map((task) => [task.id, task.rating || 1]));
   const stats = new Map<string, Map<string, { count: number; points: number; taskIds: string[] }>>();
+  const latestStatusByDay = new Map<string, Map<string, CompletionEvent>>();
 
-  completionEvents
-    .filter((event) => event.completed)
-    .forEach((event) => {
-      const dayKey = getDayKey(new Date(event.occurredAt));
-      const userStats = stats.get(dayKey) || new Map();
+  completionEvents.forEach((event) => {
+    const dayKey = getDayKey(new Date(event.occurredAt));
+    const userTaskKey = `${event.userId}:${event.taskId}`;
+    const dayMap = latestStatusByDay.get(dayKey) || new Map();
+    const existing = dayMap.get(userTaskKey);
+    if (!existing || new Date(event.occurredAt) > new Date(existing.occurredAt)) {
+      dayMap.set(userTaskKey, event);
+    }
+    latestStatusByDay.set(dayKey, dayMap);
+  });
+
+  latestStatusByDay.forEach((dayMap, dayKey) => {
+    const userStats = new Map<string, { count: number; points: number; taskIds: string[] }>();
+    dayMap.forEach((event) => {
+      if (!event.completed) return;
       const current = userStats.get(event.userId) || { count: 0, points: 0, taskIds: [] };
       const points = ratingByTask.get(event.taskId) || 1;
       userStats.set(event.userId, {
@@ -61,8 +78,11 @@ export default function ProfileScreen({
         points: current.points + points,
         taskIds: [...current.taskIds, event.taskId],
       });
-      stats.set(dayKey, userStats);
     });
+    if (userStats.size > 0) {
+      stats.set(dayKey, userStats);
+    }
+  });
 
   const selectedStats = selectedDayKey ? stats.get(selectedDayKey) : null;
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
@@ -130,6 +150,18 @@ export default function ProfileScreen({
                 </div>
                 <div className="text-gray-500">{user.email}</div>
               </div>
+              {currentUser.role === 'admin' && user.id !== currentUser.id && (
+                <button
+                  onClick={() => {
+                    if (confirm(`Remove ${user.name} from household?`)) {
+                      onRemoveMember(user.id);
+                    }
+                  }}
+                  className="px-3 py-1 text-xs rounded-full border border-red-200 text-red-600 hover:bg-red-50"
+                >
+                  Remove
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -252,6 +284,35 @@ export default function ProfileScreen({
           )}
         </div>
       </div>
+
+      {/* Admin Actions */}
+      {currentUser.role === 'admin' && (
+        <div className="bg-white rounded-2xl p-6 mb-4 shadow-sm">
+          <h2 className="text-gray-900 mb-4">Admin Actions</h2>
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                if (confirm('Reset all completion history and uncheck tasks?')) {
+                  onResetCompletions();
+                }
+              }}
+              className="w-full py-3 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all"
+            >
+              Reset Completions
+            </button>
+            <button
+              onClick={() => {
+                if (confirm('Reset tasks to defaults? This will delete all tasks and re-seed.')) {
+                  onResetTasks();
+                }
+              }}
+              className="w-full py-3 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-all"
+            >
+              Reset Tasks to Defaults
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Settings */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4">

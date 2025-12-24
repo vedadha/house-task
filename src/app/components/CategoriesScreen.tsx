@@ -9,6 +9,7 @@ interface CategoriesScreenProps {
   tasks: Task[];
   householdUsers: User[];
   currentUser: User;
+  isTaskCompleted: (task: Task, userId: string) => boolean;
   onToggleTask: (taskId: string, userId: string) => void;
   onAddCategory: (category: Omit<Category, 'id'>) => void;
   onUpdateCategory: (categoryId: string, updates: Partial<Category>) => void;
@@ -42,6 +43,7 @@ export default function CategoriesScreen({
   tasks,
   householdUsers,
   currentUser,
+  isTaskCompleted,
   onToggleTask,
   onAddCategory,
   onUpdateCategory,
@@ -252,6 +254,7 @@ export default function CategoriesScreen({
                         category={category}
                         currentUser={currentUser}
                         householdUsers={householdUsers}
+                        isTaskCompleted={isTaskCompleted}
                         onToggleTask={onToggleTask}
                         onUpdateTask={() => {}}
                         onDeleteTask={onDeleteTask}

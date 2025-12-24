@@ -12,6 +12,7 @@ export interface User {
   avatar: string;
   color: string;
   password?: string; // Optional, only used during registration
+  role?: 'admin' | 'member';
 }
 
 export interface Task {
@@ -189,12 +190,12 @@ function App() {
       { title: 'Clean countertops', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 1 },
       { title: 'Take out trash', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 1 },
       { title: 'Binxi food/water', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 2 },
-      { title: 'Dorucak', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 2 },
-      { title: 'Rucak', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 3 },
+      { title: 'Breakfast', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 2 },
+      { title: 'Lunch', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 3 },
       { title: 'Market', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 1 },
-      { title: 'Masina za sudje', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 2 },
-      { title: 'Ves masina', categoryId: bathroomId, completedBy: [], frequency: 'daily', rating: 2 },
-      { title: 'Vecera', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 3 },
+      { title: 'Dishwasher', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 2 },
+      { title: 'Washing Machine', categoryId: bathroomId, completedBy: [], frequency: 'daily', rating: 2 },
+      { title: 'Dinner', categoryId: kitchenId, completedBy: [], frequency: 'daily', rating: 3 },
       { title: 'Make beds', categoryId: bedroomId, completedBy: [], frequency: 'daily', rating: 1 },
       { title: 'Change bedsheets', categoryId: bedroomId, completedBy: [], frequency: 'weekly', rating: 1 },
       { title: 'Clean toilet', categoryId: bathroomId, completedBy: [], frequency: 'weekly', rating: 1 },
@@ -294,6 +295,75 @@ function App() {
     setHouseholdUsers([]);
     setCategories([]);
     setTasks([]);
+    setCompletionEvents([]);
+  };
+
+  const handleResetCompletions = async () => {
+    try {
+      await api.resetCompletions();
+      const events = await api.getCompletionEvents(120);
+      setCompletionEvents(events);
+      const refreshedTasks = await api.getTasks();
+      setTasks(refreshedTasks);
+      alert('Completions reset.');
+    } catch (error) {
+      console.error('Reset completions error:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to reset completions.';
+      alert(message);
+    }
+  };
+
+  const handleResetTasks = async () => {
+    try {
+      await api.resetTasksToDefaults();
+      await loadData();
+      alert('Tasks reset to defaults.');
+    } catch (error) {
+      console.error('Reset tasks error:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to reset tasks.';
+      alert(message);
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    try {
+      await api.removeHouseholdMember(userId);
+      const users = await api.getHouseholdUsers();
+      setHouseholdUsers(users);
+      alert('Member removed.');
+    } catch (error) {
+      console.error('Remove member error:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to remove member.';
+      alert(message);
+    }
+  };
+
+  const getPeriodStart = (frequency: Task['frequency']) => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (frequency === 'weekly') {
+      const day = start.getDay();
+      const diff = day === 0 ? 6 : day - 1;
+      start.setDate(start.getDate() - diff);
+    }
+    return start;
+  };
+
+  const isTaskCompleted = (task: Task, userId: string) => {
+    const periodStart = getPeriodStart(task.frequency);
+    const relevant = completionEvents
+      .filter((event) => event.taskId === task.id && event.userId === userId)
+      .filter((event) => new Date(event.occurredAt) >= periodStart)
+      .sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
+
+    if (relevant.length === 0) {
+      return false;
+    }
+
+    return relevant[relevant.length - 1].completed;
   };
 
   const toggleTaskCompletion = async (taskId: string, userId: string) => {
@@ -426,6 +496,10 @@ function App() {
       categories={categories}
       tasks={tasks}
       completionEvents={completionEvents}
+      isTaskCompleted={isTaskCompleted}
+      onResetCompletions={handleResetCompletions}
+      onResetTasks={handleResetTasks}
+      onRemoveMember={handleRemoveMember}
       onLogout={handleLogout}
       onToggleTask={toggleTaskCompletion}
       onAddTask={addTask}

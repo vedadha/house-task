@@ -8,6 +8,7 @@ interface HomeScreenProps {
   householdUsers: User[];
   categories: Category[];
   tasks: Task[];
+  isTaskCompleted: (task: Task, userId: string) => boolean;
   onToggleTask: (taskId: string, userId: string) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
@@ -18,6 +19,7 @@ export default function HomeScreen({
   householdUsers,
   categories,
   tasks,
+  isTaskCompleted,
   onToggleTask,
   onUpdateTask,
   onDeleteTask,
@@ -27,7 +29,7 @@ export default function HomeScreen({
   const filteredTasks = tasks.filter((task) => task.frequency === view);
 
   const completedCount = filteredTasks.filter((task) =>
-    task.completedBy.includes(currentUser.id)
+    isTaskCompleted(task, currentUser.id)
   ).length;
 
   const progress = filteredTasks.length > 0 
@@ -123,6 +125,7 @@ export default function HomeScreen({
                 category={category}
                 currentUser={currentUser}
                 householdUsers={householdUsers}
+                isTaskCompleted={isTaskCompleted}
                 onToggleTask={onToggleTask}
                 onUpdateTask={onUpdateTask}
                 onDeleteTask={onDeleteTask}

@@ -8,6 +8,7 @@ interface TaskCardProps {
   category?: Category;
   currentUser: User;
   householdUsers: User[];
+  isTaskCompleted: (task: Task, userId: string) => boolean;
   onToggleTask: (taskId: string, userId: string) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
@@ -26,6 +27,7 @@ export default function TaskCard({
   category,
   currentUser,
   householdUsers,
+  isTaskCompleted,
   onToggleTask,
   onUpdateTask,
   onDeleteTask,
@@ -125,7 +127,7 @@ export default function TaskCard({
       {!isEditing && (
         <div className="flex gap-2 flex-wrap">
           {householdUsers.map((user) => {
-            const isCompleted = task.completedBy.includes(user.id);
+            const isCompleted = isTaskCompleted(task, user.id);
             const isCurrentUser = user.id === currentUser.id;
 
             return (

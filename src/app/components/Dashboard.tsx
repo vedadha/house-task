@@ -12,6 +12,10 @@ interface DashboardProps {
   categories: Category[];
   tasks: Task[];
   completionEvents: CompletionEvent[];
+  isTaskCompleted: (task: Task, userId: string) => boolean;
+  onResetCompletions: () => void;
+  onResetTasks: () => void;
+  onRemoveMember: (userId: string) => void;
   onLogout: () => void;
   onToggleTask: (taskId: string, userId: string) => void;
   onAddTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
@@ -30,6 +34,10 @@ export default function Dashboard({
   categories,
   tasks,
   completionEvents,
+  isTaskCompleted,
+  onResetCompletions,
+  onResetTasks,
+  onRemoveMember,
   onLogout,
   onToggleTask,
   onAddTask,
@@ -51,6 +59,7 @@ export default function Dashboard({
             householdUsers={householdUsers}
             categories={categories}
             tasks={tasks}
+            isTaskCompleted={isTaskCompleted}
             onToggleTask={onToggleTask}
             onUpdateTask={onUpdateTask}
             onDeleteTask={onDeleteTask}
@@ -62,6 +71,7 @@ export default function Dashboard({
             tasks={tasks}
             householdUsers={householdUsers}
             currentUser={currentUser}
+            isTaskCompleted={isTaskCompleted}
             onToggleTask={onToggleTask}
             onAddCategory={onAddCategory}
             onUpdateCategory={onUpdateCategory}
@@ -82,6 +92,9 @@ export default function Dashboard({
             householdUsers={householdUsers}
             tasks={tasks}
             completionEvents={completionEvents}
+            onResetCompletions={onResetCompletions}
+            onResetTasks={onResetTasks}
+            onRemoveMember={onRemoveMember}
             onLogout={onLogout}
           />
         )}
