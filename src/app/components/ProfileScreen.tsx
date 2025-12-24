@@ -90,6 +90,32 @@ export default function ProfileScreen({
     ? new Date(selectedDayKey).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
     : '';
 
+  const monthKey = (date: Date) =>
+    `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}`;
+  const currentMonthKey = monthKey(new Date());
+  const monthlyTotals = new Map<string, { count: number; points: number }>();
+  const latestMonthStatus = new Map<string, CompletionEvent>();
+
+  completionEvents.forEach((event) => {
+    if (monthKey(new Date(event.occurredAt)) !== currentMonthKey) return;
+    const eventDayKey = getDayKey(new Date(event.occurredAt));
+    const userTaskKey = `${event.userId}:${event.taskId}:${eventDayKey}`;
+    const existing = latestMonthStatus.get(userTaskKey);
+    if (!existing || new Date(event.occurredAt) > new Date(existing.occurredAt)) {
+      latestMonthStatus.set(userTaskKey, event);
+    }
+  });
+
+  latestMonthStatus.forEach((event) => {
+    if (!event.completed) return;
+    const current = monthlyTotals.get(event.userId) || { count: 0, points: 0 };
+    const points = ratingByTask.get(event.taskId) || 1;
+    monthlyTotals.set(event.userId, {
+      count: current.count + 1,
+      points: current.points + points,
+    });
+  });
+
   return (
     <div className="p-6 pb-8">
       {/* Profile Header */}
@@ -282,6 +308,33 @@ export default function ProfileScreen({
           ) : (
             <div className="text-xs text-gray-400">No completions for this day.</div>
           )}
+        </div>
+      </div>
+
+      {/* Monthly Summary */}
+      <div className="bg-white rounded-2xl p-6 mb-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <CalendarDays className="w-5 h-5 text-gray-600" />
+          <h2 className="text-gray-900">Monthly Summary</h2>
+        </div>
+        <div className="space-y-3">
+          {householdUsers.map((user) => {
+            const totals = monthlyTotals.get(user.id) || { count: 0, points: 0 };
+            return (
+              <div key={user.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 p-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ backgroundColor: user.color }}
+                  />
+                  <span className="text-gray-900">{user.name}</span>
+                </div>
+                <div className="text-sm text-gray-600">
+                  {totals.count} tasks · {totals.points} pts
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
